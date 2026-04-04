@@ -322,12 +322,15 @@ export function createFollowupRunner(params: {
         originatingChannel: queued.originatingChannel,
         provider: queued.run.messageProvider,
       }) as OriginatingChannelType | undefined;
-      const replyToMode = resolveReplyToMode(
+      const rawReplyToMode = resolveReplyToMode(
         queued.run.config,
         replyToChannel,
         queued.originatingAccountId,
         queued.originatingChatType,
       );
+      // "auto" must be resolved before reaching the filter — followup runs
+      // are never queued, so "auto" always means "off" here.
+      const replyToMode = rawReplyToMode === "auto" ? "off" : rawReplyToMode;
 
       const replyTaggedPayloads: ReplyPayload[] = applyReplyThreading({
         payloads: sanitizedPayloads,
