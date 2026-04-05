@@ -987,6 +987,7 @@ export const telegramPlugin = createChatChannelPlugin({
   },
   threading: {
     topLevelReplyToMode: "telegram",
+    allowExplicitReplyTagsWhenOff: false,
     buildToolContext: (params) => buildTelegramThreadingToolContext(params),
     resolveAutoThreadId: ({ to, toolContext }) => resolveTelegramAutoThreadId({ to, toolContext }),
   },
