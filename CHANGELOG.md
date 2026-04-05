@@ -30,6 +30,7 @@ Docs: https://docs.openclaw.ai
 - Agents/cache: diagnostics: add prompt-cache break diagnostics, trace live cache scenarios through embedded runner paths, and show cache reuse explicitly in `openclaw status --verbose`. Thanks @vincentkoc.
 - Agents/cache: stabilize cache-relevant system prompt fingerprints by normalizing equivalent structured prompt whitespace, line endings, hook-added system context, and runtime capability ordering so semantically unchanged prompts reuse KV/cache more reliably. Thanks @vincentkoc.
 - Config/schema: enrich the exported `openclaw config schema` JSON Schema with field titles and descriptions so editors, agents, and other schema consumers receive the same config help metadata. (#60067) Thanks @solavrc.
+- Agents/bootstrap: add opt-in `agents.defaults.contextInjection: "continuation-skip"` so safe continuation turns can skip workspace bootstrap re-injection, while heartbeat runs and post-compaction retries still rebuild context when needed. Fixes #9157. Thanks @ivanenev, @cgdusek, and @vincentkoc.
 
 ### Fixes
 
@@ -79,7 +80,6 @@ Docs: https://docs.openclaw.ai
 - Agents/runtime: make default subagent allowlists, inherited skills/workspaces, and duplicate session-id resolution behave more predictably, and include value-shape hints in missing-parameter tool errors. (#59944, #59992, #59858, #55317)
 - Providers/Anthropic: keep `claude-cli/*` auth on live Claude CLI credentials at runtime, avoid persisting stale bearer-token profiles, and suppress macOS Keychain prompts during non-interactive Claude CLI setup. (#61234) Thanks @darkamenosa.
 - Update/npm: prefer the npm binary that owns the installed global OpenClaw prefix so mixed Homebrew-plus-nvm setups update the right install. (#60153) Thanks @jayeshp19.
-- Agents/bootstrap: add opt-in `agents.defaults.contextInjection: "continuation-skip"` so safe continuation turns can skip workspace bootstrap re-injection, while heartbeat runs and post-compaction retries still rebuild context when needed. Fixes #9157. Thanks @ivanenev, @cgdusek, and @vincentkoc.
 - Gateway/plugin routes: keep gateway-auth plugin runtime routes on write-only fallback scopes unless a trusted-proxy caller explicitly declares narrower `x-openclaw-scopes`, so plugin HTTP handlers no longer mint admin-level runtime scopes on missing or untrusted HTTP scope headers. (#59815) Thanks @pgondhi987.
 - Agents/exec approvals: let `exec-approvals.json` agent security override stricter gateway tool defaults so approved subagents can use `security: "full"` without falling back to allowlist enforcement again. (#60310) Thanks @lml2468.
 - Tasks/maintenance: reconcile stale cron and chat-backed CLI task rows against live cron-job and agent-run ownership instead of treating any persisted session key as proof that the task is still running. (#60310) Thanks @lml2468.
