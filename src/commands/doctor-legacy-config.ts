@@ -24,6 +24,293 @@ export function normalizeCompatibilityConfigValues(cfg: OpenClawConfig): {
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     Boolean(value) && typeof value === "object" && !Array.isArray(value);
 
+  const ensureNestedRecord = (
+    owner: Record<string, unknown>,
+    key: string,
+  ): Record<string, unknown> => {
+    const existing = owner[key];
+    if (isRecord(existing)) {
+      return { ...existing };
+    }
+    return {};
+  };
+
+  const normalizeStreamingMode = (value: unknown): string | null => {
+    if (typeof value !== "string") {
+      return null;
+    }
+    const normalized = value.trim().toLowerCase();
+    return normalized || null;
+  };
+
+  const parseCanonicalStreamingMode = (value: unknown): "off" | "partial" | "block" | "progress" | null => {
+    const normalized = normalizeStreamingMode(value);
+    if (
+      normalized === "off" ||
+      normalized === "partial" ||
+      normalized === "block" ||
+      normalized === "progress"
+    ) {
+      return normalized;
+    }
+    return null;
+  };
+
+  const resolveTelegramPreviewMode = (entry: Record<string, unknown>) => {
+    const canonical = parseCanonicalStreamingMode(isRecord(entry.streaming) ? entry.streaming.mode : undefined);
+    if (canonical) {
+      return canonical === "progress" ? "partial" : canonical;
+    }
+    const scalar = parseCanonicalStreamingMode(entry.streaming);
+    if (scalar) {
+      return scalar === "progress" ? "partial" : scalar;
+    }
+    const legacy = normalizeStreamingMode(entry.streamMode);
+    if (legacy === "off" || legacy === "partial" || legacy === "block") {
+      return legacy;
+    }
+    if (legacy === "progress") {
+      return "partial";
+    }
+    if (typeof entry.streaming === "boolean") {
+      return entry.streaming ? "partial" : "off";
+    }
+    return "partial";
+  };
+
+  const resolveDiscordPreviewMode = (entry: Record<string, unknown>) => {
+    const canonical = parseCanonicalStreamingMode(isRecord(entry.streaming) ? entry.streaming.mode : undefined);
+    if (canonical) {
+      return canonical === "progress" ? "partial" : canonical;
+    }
+    const scalar = parseCanonicalStreamingMode(entry.streaming);
+    if (scalar) {
+      return scalar === "progress" ? "partial" : scalar;
+    }
+    const legacy = normalizeStreamingMode(entry.streamMode);
+    if (legacy === "off" || legacy === "partial" || legacy === "block") {
+      return legacy;
+    }
+    if (legacy === "progress") {
+      return "partial";
+    }
+    if (typeof entry.streaming === "boolean") {
+      return entry.streaming ? "partial" : "off";
+    }
+    return "off";
+  };
+
+  const resolveSlackStreamingMode = (entry: Record<string, unknown>) => {
+    const canonical = parseCanonicalStreamingMode(isRecord(entry.streaming) ? entry.streaming.mode : undefined);
+    if (canonical) {
+      return canonical;
+    }
+    const scalar = parseCanonicalStreamingMode(entry.streaming);
+    if (scalar) {
+      return scalar;
+    }
+    const legacy = normalizeStreamingMode(entry.streamMode);
+    if (legacy === "replace") {
+      return "partial";
+    }
+    if (legacy === "status_final") {
+      return "progress";
+    }
+    if (legacy === "append") {
+      return "block";
+    }
+    if (typeof entry.streaming === "boolean") {
+      return entry.streaming ? "partial" : "off";
+    }
+    return "partial";
+  };
+
+  const resolveSlackNativeTransport = (entry: Record<string, unknown>) => {
+    const streaming = isRecord(entry.streaming) ? entry.streaming : null;
+    if (typeof streaming?.nativeTransport === "boolean") {
+      return streaming.nativeTransport;
+    }
+    if (typeof entry.nativeStreaming === "boolean") {
+      return entry.nativeStreaming;
+    }
+    if (typeof entry.streaming === "boolean") {
+      return entry.streaming;
+    }
+    return true;
+  };
+
+  const normalizePreviewChannelStreamingAliases = (params: {
+    provider: "telegram" | "discord" | "slack";
+    entry: Record<string, unknown>;
+    pathPrefix: string;
+  }): Record<string, unknown> => {
+    const beforeStreaming = params.entry.streaming;
+    const hadLegacyStreamMode = params.entry.streamMode !== undefined;
+    const hasLegacyFlatFields =
+      params.entry.chunkMode !== undefined ||
+      params.entry.blockStreaming !== undefined ||
+      params.entry.blockStreamingCoalesce !== undefined ||
+      (params.provider !== "slack" && params.entry.draftChunk !== undefined) ||
+      (params.provider === "slack" && params.entry.nativeStreaming !== undefined);
+    const shouldNormalize =
+      hadLegacyStreamMode ||
+      typeof beforeStreaming === "boolean" ||
+      typeof beforeStreaming === "string" ||
+      hasLegacyFlatFields;
+    if (!shouldNormalize) {
+      return params.entry;
+    }
+
+    const resolvedMode =
+      params.provider === "telegram"
+        ? resolveTelegramPreviewMode(params.entry)
+        : params.provider === "discord"
+          ? resolveDiscordPreviewMode(params.entry)
+          : resolveSlackStreamingMode(params.entry);
+
+    const updated = { ...params.entry };
+    const streaming = ensureNestedRecord(updated, "streaming");
+    const block = ensureNestedRecord(streaming, "block");
+    const preview = ensureNestedRecord(streaming, "preview");
+
+    if (
+      (hadLegacyStreamMode || typeof beforeStreaming === "boolean" || typeof beforeStreaming === "string") &&
+      streaming.mode === undefined
+    ) {
+      streaming.mode = resolvedMode;
+      if (hadLegacyStreamMode) {
+        changes.push(
+          `Moved ${params.pathPrefix}.streamMode → ${params.pathPrefix}.streaming.mode (${resolvedMode}).`,
+        );
+      }
+      if (typeof beforeStreaming === "boolean") {
+        changes.push(
+          `Moved ${params.pathPrefix}.streaming (boolean) → ${params.pathPrefix}.streaming.mode (${resolvedMode}).`,
+        );
+      } else if (typeof beforeStreaming === "string") {
+        changes.push(
+          `Moved ${params.pathPrefix}.streaming (scalar) → ${params.pathPrefix}.streaming.mode (${resolvedMode}).`,
+        );
+      }
+    }
+
+    if (hadLegacyStreamMode) {
+      delete updated.streamMode;
+    }
+    if (updated.chunkMode !== undefined && streaming.chunkMode === undefined) {
+      streaming.chunkMode = updated.chunkMode;
+      delete updated.chunkMode;
+      changes.push(`Moved ${params.pathPrefix}.chunkMode → ${params.pathPrefix}.streaming.chunkMode.`);
+    }
+    if (updated.blockStreaming !== undefined && block.enabled === undefined) {
+      block.enabled = updated.blockStreaming;
+      delete updated.blockStreaming;
+      changes.push(
+        `Moved ${params.pathPrefix}.blockStreaming → ${params.pathPrefix}.streaming.block.enabled.`,
+      );
+    }
+    if (updated.blockStreamingCoalesce !== undefined && block.coalesce === undefined) {
+      block.coalesce = updated.blockStreamingCoalesce;
+      delete updated.blockStreamingCoalesce;
+      changes.push(
+        `Moved ${params.pathPrefix}.blockStreamingCoalesce → ${params.pathPrefix}.streaming.block.coalesce.`,
+      );
+    }
+    if (params.provider !== "slack" && updated.draftChunk !== undefined && preview.chunk === undefined) {
+      preview.chunk = updated.draftChunk;
+      delete updated.draftChunk;
+      changes.push(`Moved ${params.pathPrefix}.draftChunk → ${params.pathPrefix}.streaming.preview.chunk.`);
+    }
+    if (params.provider === "slack") {
+      if (updated.nativeStreaming !== undefined && streaming.nativeTransport === undefined) {
+        streaming.nativeTransport = resolveSlackNativeTransport(updated);
+        delete updated.nativeStreaming;
+        changes.push(
+          `Moved ${params.pathPrefix}.nativeStreaming → ${params.pathPrefix}.streaming.nativeTransport.`,
+        );
+      } else if (typeof beforeStreaming === "boolean" && streaming.nativeTransport === undefined) {
+        streaming.nativeTransport = resolveSlackNativeTransport(updated);
+        changes.push(
+          `Moved ${params.pathPrefix}.streaming (boolean) → ${params.pathPrefix}.streaming.nativeTransport.`,
+        );
+      }
+    }
+    if (Object.keys(preview).length > 0) {
+      streaming.preview = preview;
+    }
+    if (Object.keys(block).length > 0) {
+      streaming.block = block;
+    }
+    updated.streaming = streaming;
+    if (params.provider === "discord" && resolvedMode === "off" && hadLegacyStreamMode) {
+      changes.push(
+        `${params.pathPrefix}.streaming remains off by default to avoid Discord preview-edit rate limits; set ${params.pathPrefix}.streaming.mode="partial" to opt in explicitly.`,
+      );
+    }
+    return updated;
+  };
+
+  const normalizePreviewChannelStreamingConfig = () => {
+    const channels = next.channels;
+    if (!isRecord(channels)) {
+      return;
+    }
+
+    let channelsChanged = false;
+    const nextChannels = { ...channels };
+    for (const provider of ["telegram", "discord", "slack"] as const) {
+      const channel = nextChannels[provider];
+      if (!isRecord(channel)) {
+        continue;
+      }
+
+      let channelChanged = false;
+      let nextChannel = normalizePreviewChannelStreamingAliases({
+        provider,
+        entry: channel,
+        pathPrefix: `channels.${provider}`,
+      });
+      channelChanged = nextChannel !== channel;
+
+      const accounts = isRecord(nextChannel.accounts) ? { ...nextChannel.accounts } : null;
+      if (accounts) {
+        let accountsChanged = false;
+        for (const [accountId, rawAccount] of Object.entries(accounts)) {
+          if (!isRecord(rawAccount)) {
+            continue;
+          }
+          const migrated = normalizePreviewChannelStreamingAliases({
+            provider,
+            entry: rawAccount,
+            pathPrefix: `channels.${provider}.accounts.${accountId}`,
+          });
+          if (migrated !== rawAccount) {
+            accounts[accountId] = migrated;
+            accountsChanged = true;
+          }
+        }
+        if (accountsChanged) {
+          nextChannel = { ...nextChannel, accounts };
+          channelChanged = true;
+        }
+      }
+
+      if (!channelChanged) {
+        continue;
+      }
+      nextChannels[provider] = nextChannel;
+      channelsChanged = true;
+    }
+
+    if (!channelsChanged) {
+      return;
+    }
+    next = {
+      ...next,
+      channels: nextChannels as OpenClawConfig["channels"],
+    };
+  };
+
   const normalizeLegacyBrowserProfiles = () => {
     const rawBrowser = next.browser;
     if (!isRecord(rawBrowser)) {
@@ -155,6 +442,7 @@ export function normalizeCompatibilityConfigValues(cfg: OpenClawConfig): {
   };
 
   seedMissingDefaultAccountsFromSingleAccountBase();
+  normalizePreviewChannelStreamingConfig();
   normalizeLegacyBrowserProfiles();
   const setupMigration = runPluginSetupConfigMigrations({
     config: next,
