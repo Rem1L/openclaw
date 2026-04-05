@@ -7321,7 +7321,6 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
             additionalProperties: false,
           },
         },
-<<<<<<< HEAD
         network: {
           type: "object",
           properties: {
@@ -7330,10 +7329,6 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
             },
           },
           additionalProperties: false,
-=======
-        allowPrivateNetwork: {
-          type: "boolean",
->>>>>>> 7fbedfc183 (feat(whatsapp): wire replyToMode auto with quoted reply delivery)
         },
         dmChannelRetry: {
           type: "object",
@@ -7628,7 +7623,6 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
                   additionalProperties: false,
                 },
               },
-<<<<<<< HEAD
               network: {
                 type: "object",
                 properties: {
@@ -7637,10 +7631,6 @@ export const GENERATED_BUNDLED_CHANNEL_CONFIG_METADATA = [
                   },
                 },
                 additionalProperties: false,
-=======
-              allowPrivateNetwork: {
-                type: "boolean",
->>>>>>> 7fbedfc183 (feat(whatsapp): wire replyToMode auto with quoted reply delivery)
               },
               dmChannelRetry: {
                 type: "object",
