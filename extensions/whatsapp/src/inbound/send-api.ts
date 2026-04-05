@@ -81,6 +81,7 @@ export function createWebSendApi(params: {
         fromMe: sendOptions?.quotedMessageKey?.fromMe,
         participant: sendOptions?.quotedMessageKey?.participant,
       });
+      console.log("[auto-trace] send-api: quotedOpts:", quotedOpts ? "YES" : "NO");
       const result = quotedOpts
         ? await params.sock.sendMessage(jid, payload, quotedOpts)
         : await params.sock.sendMessage(jid, payload);

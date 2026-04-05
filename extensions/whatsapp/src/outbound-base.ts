@@ -83,14 +83,21 @@ export function createWhatsAppOutboundBase({
           resolveOutboundSendDep<WhatsAppSendMessage>(deps, "whatsapp", {
             legacyKeys: WHATSAPP_LEGACY_OUTBOUND_SEND_DEP_KEYS,
           }) ?? sendMessageWhatsApp;
+        const quotedMessageKey = replyToId
+          ? { id: replyToId, remoteJid: toWhatsappJid(to), fromMe: false }
+          : undefined;
+        console.log(
+          "[auto-trace] outbound sendText: replyToId:",
+          replyToId,
+          "quotedKey:",
+          quotedMessageKey,
+        );
         return await send(to, normalizedText, {
           verbose: false,
           cfg,
           accountId: accountId ?? undefined,
           gifPlayback,
-          quotedMessageKey: replyToId
-            ? { id: replyToId, remoteJid: toWhatsappJid(to), fromMe: false }
-            : undefined,
+          quotedMessageKey,
         });
       },
       sendMedia: async ({

@@ -136,6 +136,12 @@ export function createFollowupRunner(params: {
 
   return async (queued: FollowupRun) => {
     try {
+      console.log(
+        "[auto-trace] followup-runner ENTERED: messageId:",
+        queued.messageId,
+        "prompt:",
+        queued.prompt?.substring(0, 60),
+      );
       const runId = crypto.randomUUID();
       const shouldSurfaceToControlUi = isInternalMessageChannel(
         resolveOriginMessageProvider({
@@ -331,12 +337,27 @@ export function createFollowupRunner(params: {
       // Followup runs are always queued work — "auto" resolves to "first" (quote the triggering message).
       const replyToMode = rawReplyToMode === "auto" ? "first" : rawReplyToMode;
 
+      console.log(
+        "[auto-trace] followup-runner: rawMode:",
+        rawReplyToMode,
+        "resolved:",
+        replyToMode,
+        "messageId:",
+        queued.messageId,
+      );
       const replyTaggedPayloads: ReplyPayload[] = applyReplyThreading({
         payloads: sanitizedPayloads,
         replyToMode,
         replyToChannel,
         currentMessageId: queued.messageId,
       });
+      console.log(
+        "[auto-trace] followup-runner payloads:",
+        replyTaggedPayloads.map((p) => ({
+          replyToId: p.replyToId,
+          text: p.text?.substring(0, 40),
+        })),
+      );
       const dedupedPayloads = filterMessagingToolDuplicates({
         payloads: replyTaggedPayloads,
         sentTexts: runResult.messagingToolSentTexts ?? [],

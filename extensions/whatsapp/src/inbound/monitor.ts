@@ -107,7 +107,10 @@ export async function monitorWebInbox(options: {
       return `${msg.accountId}:${conversationKey}:${senderKey}`;
     },
     shouldDebounce: options.shouldDebounce,
-    onEnrich: (msg, _reason) => ({ ...msg, wasQueued: true }),
+    onEnrich: (msg, reason) => {
+      console.log("[auto-trace] debouncer onEnrich:", reason, "msgId:", msg.id);
+      return { ...msg, wasQueued: true };
+    },
     onFlush: async (entries) => {
       const last = entries.at(-1);
       if (!last) {

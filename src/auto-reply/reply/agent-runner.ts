@@ -162,6 +162,14 @@ export async function runReplyAgent(params: {
   );
   const replyToMode =
     rawReplyToMode === "auto" ? (sessionCtx.WasQueued ? "first" : "off") : rawReplyToMode;
+  console.log(
+    "[auto-trace] agent-runner: rawMode:",
+    rawReplyToMode,
+    "resolved:",
+    replyToMode,
+    "WasQueued:",
+    sessionCtx.WasQueued,
+  );
   const applyReplyToMode = createReplyToModeFilterForChannel(replyToMode, replyToChannel);
   const cfg = followupRun.run.config;
   const normalizeReplyMediaPaths = createReplyMediaPathNormalizer({
