@@ -349,16 +349,20 @@ export function createFollowupRunner(params: {
         "messageId:",
         queued.messageId,
       );
-      console.log(
-        "[auto-trace] pre-threading payloads:",
-        nonReasoningPayloads.map((p) => ({
-          replyToId: p.replyToId,
-          replyToCurrent: p.replyToCurrent,
-          text: p.text?.substring(0, 40),
-        })),
-      );
+      // When "auto" resolved to "first", clear explicit replyToCurrent: false
+      // so the implicit messageId-based replyToId can be stamped by applyReplyThreading.
+      // The model sets replyToCurrent: false when it doesn't use [[reply_to_current]] tags,
+      // but for auto-quoting of queued messages we want implicit quoting regardless.
+      const threadingPayloads =
+        replyToMode === "first" && rawReplyToMode === "auto"
+          ? nonReasoningPayloads.map((p) =>
+              (p as { replyToCurrent?: boolean }).replyToCurrent === false
+                ? { ...p, replyToCurrent: undefined }
+                : p,
+            )
+          : nonReasoningPayloads;
       const replyTaggedPayloads: ReplyPayload[] = applyReplyThreading({
-        payloads: nonReasoningPayloads,
+        payloads: threadingPayloads,
         replyToMode,
         replyToChannel,
         currentMessageId: queued.messageId,
