@@ -132,6 +132,7 @@ export function buildWhatsAppInboundContext(params: {
     SenderE164: params.sender.e164,
     CommandAuthorized: params.commandAuthorized,
     WasMentioned: params.msg.wasMentioned,
+    WasQueued: params.msg.wasQueued,
     ...(params.msg.location ? toLocationContext(params.msg.location) : {}),
     Provider: "whatsapp",
     Surface: "whatsapp",
