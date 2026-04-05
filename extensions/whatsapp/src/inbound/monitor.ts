@@ -288,7 +288,9 @@ export async function monitorWebInbox(options: {
       isFromMe: Boolean(msg.key?.fromMe),
       messageTimestampMs,
       connectedAtMs,
-      sock: { sendMessage: (jid, content) => sendTrackedMessage(jid, content) },
+      sock: {
+        sendMessage: (jid: string, content: AnyMessageContent) => sendTrackedMessage(jid, content),
+      },
       remoteJid,
     });
     if (!access.allowed) {
@@ -567,7 +569,11 @@ export async function monitorWebInbox(options: {
 
   const sendApi = createWebSendApi({
     sock: {
-      sendMessage: (jid: string, content: AnyMessageContent) => sendTrackedMessage(jid, content),
+      sendMessage: (
+        jid: string,
+        content: AnyMessageContent,
+        options?: MiscMessageGenerationOptions,
+      ) => sendTrackedMessage(jid, content, options),
       sendPresenceUpdate: (presence, jid?: string) => sock.sendPresenceUpdate(presence, jid),
     },
     defaultAccountId: options.accountId,
