@@ -215,9 +215,7 @@ export const dispatchTelegramMessage = async ({
     previewStreamingEnabled && !accountBlockStreamingEnabled && !forceBlockStreamingForReasoning;
   const canStreamReasoningDraft = streamReasoningDraft;
   const draftReplyToMessageId =
-    replyToMode !== "off" && replyToMode !== "auto" && typeof msg.message_id === "number"
-      ? msg.message_id
-      : undefined;
+    replyToMode !== "off" && typeof msg.message_id === "number" ? msg.message_id : undefined;
   const draftMinInitialChars = DRAFT_MIN_INITIAL_CHARS;
   // Keep DM preview lanes on real message transport. Native draft previews still
   // require a draft->message materialize hop, and that overlap keeps reintroducing
