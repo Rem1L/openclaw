@@ -349,6 +349,14 @@ export function createFollowupRunner(params: {
         "messageId:",
         queued.messageId,
       );
+      console.log(
+        "[auto-trace] pre-threading payloads:",
+        nonReasoningPayloads.map((p) => ({
+          replyToId: p.replyToId,
+          replyToCurrent: p.replyToCurrent,
+          text: p.text?.substring(0, 40),
+        })),
+      );
       const replyTaggedPayloads: ReplyPayload[] = applyReplyThreading({
         payloads: nonReasoningPayloads,
         replyToMode,
