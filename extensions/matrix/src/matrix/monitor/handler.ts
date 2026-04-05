@@ -27,6 +27,7 @@ import {
   sendReadReceiptMatrix,
   sendTypingMatrix,
 } from "../send.js";
+import { MATRIX_OPENCLAW_FINALIZED_PREVIEW_KEY } from "../send/types.js";
 import { resolveMatrixMonitorAccessState } from "./access-state.js";
 import { resolveMatrixAckReactionConfig } from "./ack-config.js";
 import { resolveMatrixAllowListMatch } from "./allowlist.js";
@@ -76,6 +77,10 @@ async function redactMatrixDraftEvent(
   draftEventId: string,
 ): Promise<void> {
   await client.redactEvent(roomId, draftEventId).catch(() => {});
+}
+
+function buildMatrixFinalizedPreviewContent(): Record<string, unknown> {
+  return { [MATRIX_OPENCLAW_FINALIZED_PREVIEW_KEY]: true };
 }
 
 export type MatrixMonitorHandlerParams = {
@@ -1309,30 +1314,29 @@ export function createMatrixRoomMessageHandler(params: MatrixMonitorHandlerParam
                 !payloadReplyMismatch &&
                 !mustDeliverFinalNormally
               ) {
-                if (payload.text !== draftStream.lastSentText()) {
-                  try {
-                    await editMessageMatrix(roomId, draftEventId, payload.text, {
-                      client,
-                      cfg,
-                      threadId: threadTarget,
-                      accountId: _route.accountId,
-                    });
-                  } catch {
-                    await redactMatrixDraftEvent(client, roomId, draftEventId);
-                    await deliverMatrixReplies({
-                      cfg,
-                      replies: [payload],
-                      roomId,
-                      client,
-                      runtime,
-                      textLimit,
-                      replyToMode,
-                      threadId: threadTarget,
-                      accountId: _route.accountId,
-                      mediaLocalRoots,
-                      tableMode,
-                    });
-                  }
+                try {
+                  await editMessageMatrix(roomId, draftEventId, payload.text, {
+                    client,
+                    cfg,
+                    threadId: threadTarget,
+                    accountId: _route.accountId,
+                    extraContent: buildMatrixFinalizedPreviewContent(),
+                  });
+                } catch {
+                  await redactMatrixDraftEvent(client, roomId, draftEventId);
+                  await deliverMatrixReplies({
+                    cfg,
+                    replies: [payload],
+                    roomId,
+                    client,
+                    runtime,
+                    textLimit,
+                    replyToMode,
+                    threadId: threadTarget,
+                    accountId: _route.accountId,
+                    mediaLocalRoots,
+                    tableMode,
+                  });
                 }
                 draftConsumed = true;
               } else if (draftEventId && hasMedia && !payloadReplyMismatch) {

@@ -4,6 +4,7 @@ import {
 } from "openclaw/plugin-sdk/conversation-runtime";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { installMatrixMonitorTestRuntime } from "../../test-runtime.js";
+import { MATRIX_OPENCLAW_FINALIZED_PREVIEW_KEY } from "../send/types.js";
 import { createMatrixRoomMessageHandler } from "./handler.js";
 import {
   createMatrixHandlerTestHarness,
@@ -1659,6 +1660,14 @@ describe("matrix monitor handler draft streaming", () => {
     await deliver({ text: "Single block" }, { kind: "final" });
 
     expect(sendSingleTextMessageMatrixMock).toHaveBeenCalledTimes(1);
+    expect(editMessageMatrixMock).toHaveBeenCalledWith(
+      "!room:example.org",
+      "$draft1",
+      "Single block",
+      expect.objectContaining({
+        extraContent: { [MATRIX_OPENCLAW_FINALIZED_PREVIEW_KEY]: true },
+      }),
+    );
     expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
     expect(redactEventMock).not.toHaveBeenCalled();
     await finish();
@@ -1676,6 +1685,14 @@ describe("matrix monitor handler draft streaming", () => {
     deliverMatrixRepliesMock.mockClear();
     await deliver({ text: "Block one" }, { kind: "block" });
 
+    expect(editMessageMatrixMock).toHaveBeenCalledWith(
+      "!room:example.org",
+      "$draft1",
+      "Block one",
+      expect.objectContaining({
+        extraContent: { [MATRIX_OPENCLAW_FINALIZED_PREVIEW_KEY]: true },
+      }),
+    );
     expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
     expect(redactEventMock).not.toHaveBeenCalled();
 
@@ -1691,6 +1708,14 @@ describe("matrix monitor handler draft streaming", () => {
 
     await deliver({ text: "Block two" }, { kind: "final" });
 
+    expect(editMessageMatrixMock).toHaveBeenCalledWith(
+      "!room:example.org",
+      "$draft2",
+      "Block two",
+      expect.objectContaining({
+        extraContent: { [MATRIX_OPENCLAW_FINALIZED_PREVIEW_KEY]: true },
+      }),
+    );
     expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
     expect(redactEventMock).not.toHaveBeenCalled();
     await finish();
@@ -1979,7 +2004,14 @@ describe("matrix monitor handler draft streaming", () => {
       expect(sendSingleTextMessageMatrixMock).toHaveBeenCalledTimes(1);
     });
     expect(sendSingleTextMessageMatrixMock.mock.calls[0]?.[1]).toBe("Beta");
-    expect(editMessageMatrixMock).not.toHaveBeenCalled();
+    expect(editMessageMatrixMock).toHaveBeenCalledWith(
+      "!room:example.org",
+      "$draft1",
+      "Alpha",
+      expect.objectContaining({
+        extraContent: { [MATRIX_OPENCLAW_FINALIZED_PREVIEW_KEY]: true },
+      }),
+    );
 
     sendSingleTextMessageMatrixMock.mockClear();
     editMessageMatrixMock.mockClear();
@@ -1993,7 +2025,14 @@ describe("matrix monitor handler draft streaming", () => {
       expect(sendSingleTextMessageMatrixMock).toHaveBeenCalledTimes(1);
     });
     expect(sendSingleTextMessageMatrixMock.mock.calls[0]?.[1]).toBe("Gamma");
-    expect(editMessageMatrixMock).not.toHaveBeenCalled();
+    expect(editMessageMatrixMock).toHaveBeenCalledWith(
+      "!room:example.org",
+      "$draft2",
+      "Beta",
+      expect.objectContaining({
+        extraContent: { [MATRIX_OPENCLAW_FINALIZED_PREVIEW_KEY]: true },
+      }),
+    );
 
     await finish();
   });
