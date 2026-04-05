@@ -81,6 +81,7 @@ export function createWebSendApi(params: {
         fromMe: sendOptions?.quotedMessageKey?.fromMe,
         participant: sendOptions?.quotedMessageKey?.participant,
       });
+      console.log("[DEBUG send-api] quotedOpts:", quotedOpts);
       const result = quotedOpts
         ? await params.sock.sendMessage(jid, payload, quotedOpts)
         : await params.sock.sendMessage(jid, payload);

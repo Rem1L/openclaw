@@ -125,6 +125,7 @@ export async function routeReply(params: RouteReplyParams): Promise<RouteReplyRe
       ? [externalPayload.mediaUrl]
       : [];
   const replyToId = externalPayload.replyToId;
+  console.log("[DEBUG route-reply] replyToId:", replyToId);
   const hasChannelData = plugin?.messaging?.hasStructuredReplyPayload?.({
     payload: externalPayload,
   });

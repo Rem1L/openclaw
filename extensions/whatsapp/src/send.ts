@@ -121,6 +121,12 @@ export async function sendMessageWhatsApp(
             accountId,
           }
         : undefined;
+    console.log(
+      "[DEBUG send.ts] quotedMessageKey:",
+      options.quotedMessageKey,
+      "sendOptions:",
+      sendOptions,
+    );
     const result = sendOptions
       ? await active.sendMessage(to, text, mediaBuffer, mediaType, sendOptions)
       : await active.sendMessage(to, text, mediaBuffer, mediaType);

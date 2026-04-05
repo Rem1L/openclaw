@@ -337,6 +337,12 @@ export function createFollowupRunner(params: {
         replyToChannel,
         currentMessageId: queued.messageId,
       });
+      console.log(
+        "[DEBUG followup-runner] replyToMode:",
+        replyToMode,
+        "payloads replyToIds:",
+        replyTaggedPayloads.map((p) => p.replyToId),
+      );
 
       const dedupedPayloads = filterMessagingToolDuplicates({
         payloads: replyTaggedPayloads,
