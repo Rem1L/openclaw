@@ -28,6 +28,7 @@ import {
   resolveOriginMessageTo,
 } from "./origin-routing.js";
 import { refreshQueuedFollowupSession, type FollowupRun } from "./queue.js";
+import { shouldSuppressReasoningPayload } from "./reply-payloads-base.js";
 import {
   applyReplyThreading,
   filterMessagingToolDuplicates,
@@ -324,6 +325,9 @@ export function createFollowupRunner(params: {
         }
         return [{ ...payload, text: stripped.text }];
       });
+      const nonReasoningPayloads = sanitizedPayloads.filter(
+        (p) => !shouldSuppressReasoningPayload(p),
+      );
       const replyToChannel = resolveOriginMessageProvider({
         originatingChannel: queued.originatingChannel,
         provider: queued.run.messageProvider,
@@ -346,7 +350,7 @@ export function createFollowupRunner(params: {
         queued.messageId,
       );
       const replyTaggedPayloads: ReplyPayload[] = applyReplyThreading({
-        payloads: sanitizedPayloads,
+        payloads: nonReasoningPayloads,
         replyToMode,
         replyToChannel,
         currentMessageId: queued.messageId,
