@@ -9,6 +9,7 @@ export function resolveTelegramReplyToMode(params: { cfg: OpenClawConfig; accoun
 }
 
 export const telegramThreading = {
+  allowExplicitReplyTagsWhenOff: false,
   scopedAccountReplyToMode: {
     resolveAccount: (cfg: OpenClawConfig, accountId: string) =>
       resolveTelegramAccount({ cfg, accountId }),
