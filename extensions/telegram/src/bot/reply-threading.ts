@@ -17,9 +17,12 @@ export function resolveReplyToForSend(params: {
   replyToMode: ReplyToMode;
   progress: DeliveryProgress;
 }): number | undefined {
-  return params.replyToId && (params.replyToMode === "all" || !params.progress.hasReplied)
-    ? params.replyToId
-    : undefined;
+  if (!params.replyToId || params.replyToMode === "off" || params.replyToMode === "auto") {
+    // "auto" should be resolved upstream; if it reaches here unresolved,
+    // fall back to "off" (no quoting).
+    return undefined;
+  }
+  return params.replyToMode === "all" || !params.progress.hasReplied ? params.replyToId : undefined;
 }
 
 export function markReplyApplied(progress: DeliveryProgress, replyToId?: number): void {
