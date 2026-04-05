@@ -1646,7 +1646,7 @@ describe("matrix monitor handler draft streaming", () => {
     return { dispatch, redactEventMock };
   }
 
-  it("redacts the quiet preview and sends the final message normally", async () => {
+  it("finalizes a single quiet-preview block in place when block streaming is enabled", async () => {
     const { dispatch, redactEventMock } = createStreamingHarness({ blockStreamingEnabled: true });
     const { deliver, opts, finish } = await dispatch();
 
@@ -1659,12 +1659,12 @@ describe("matrix monitor handler draft streaming", () => {
     await deliver({ text: "Single block" }, { kind: "final" });
 
     expect(sendSingleTextMessageMatrixMock).toHaveBeenCalledTimes(1);
-    expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(1);
-    expect(redactEventMock).toHaveBeenCalledWith("!room:example.org", "$draft1");
+    expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
+    expect(redactEventMock).not.toHaveBeenCalled();
     await finish();
   });
 
-  it("sends completed blocks normally and rotates to a new quiet preview", async () => {
+  it("preserves completed blocks by rotating to a new quiet preview", async () => {
     const { dispatch, redactEventMock } = createStreamingHarness({ blockStreamingEnabled: true });
     const { deliver, opts, finish } = await dispatch();
 
@@ -1676,8 +1676,8 @@ describe("matrix monitor handler draft streaming", () => {
     deliverMatrixRepliesMock.mockClear();
     await deliver({ text: "Block one" }, { kind: "block" });
 
-    expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(1);
-    expect(redactEventMock).toHaveBeenCalledWith("!room:example.org", "$draft1");
+    expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
+    expect(redactEventMock).not.toHaveBeenCalled();
 
     opts.onAssistantMessageStart?.();
     sendSingleTextMessageMatrixMock.mockResolvedValueOnce({
@@ -1691,8 +1691,8 @@ describe("matrix monitor handler draft streaming", () => {
 
     await deliver({ text: "Block two" }, { kind: "final" });
 
-    expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(2);
-    expect(redactEventMock).toHaveBeenCalledWith("!room:example.org", "$draft2");
+    expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
+    expect(redactEventMock).not.toHaveBeenCalled();
     await finish();
   });
 
@@ -1724,8 +1724,8 @@ describe("matrix monitor handler draft streaming", () => {
       expect(sendSingleTextMessageMatrixMock).toHaveBeenCalledTimes(2);
     });
     expect(sendSingleTextMessageMatrixMock.mock.calls[1]?.[1]).toBe("Beta");
-    expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(1);
-    expect(redactEventMock).toHaveBeenCalledWith("!room:example.org", "$draft1");
+    expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
+    expect(redactEventMock).not.toHaveBeenCalled();
     await finish();
   });
 
@@ -1762,13 +1762,18 @@ describe("matrix monitor handler draft streaming", () => {
       expect(sendSingleTextMessageMatrixMock).toHaveBeenCalledTimes(1);
     });
     expect(sendSingleTextMessageMatrixMock.mock.calls[0]?.[1]).toBe("Beta");
-    expect(editMessageMatrixMock).not.toHaveBeenCalled();
-    expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(1);
-    expect(redactEventMock).toHaveBeenCalledWith("!room:example.org", "$draft1");
+    expect(editMessageMatrixMock).toHaveBeenCalledWith(
+      "!room:example.org",
+      "$draft1",
+      "Alpha",
+      expect.anything(),
+    );
+    expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
+    expect(redactEventMock).not.toHaveBeenCalled();
     await finish();
   });
 
-  it("sends finals normally instead of relying on draft edits", async () => {
+  it("falls back to deliverMatrixReplies when final edit fails", async () => {
     const { dispatch } = createStreamingHarness();
     const { deliver, opts, finish } = await dispatch();
 
@@ -1777,15 +1782,11 @@ describe("matrix monitor handler draft streaming", () => {
       expect(sendSingleTextMessageMatrixMock).toHaveBeenCalledTimes(1);
     });
 
+    editMessageMatrixMock.mockRejectedValueOnce(new Error("rate limited"));
+
     await deliver({ text: "Hello world" }, { kind: "block" });
 
     expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(1);
-    expect(editMessageMatrixMock).not.toHaveBeenCalledWith(
-      "!room:example.org",
-      "$draft1",
-      "Hello world",
-      expect.anything(),
-    );
     await finish();
   });
 
@@ -1877,9 +1878,14 @@ describe("matrix monitor handler draft streaming", () => {
     });
     await deliver({ text: "Alpha" }, { kind: "block" });
 
-    expect(editMessageMatrixMock).not.toHaveBeenCalled();
-    expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(1);
-    expect(redactEventMock).toHaveBeenCalledWith("!room:example.org", "$draft1");
+    expect(editMessageMatrixMock).toHaveBeenCalledWith(
+      "!room:example.org",
+      "$draft1",
+      "Alpha",
+      expect.anything(),
+    );
+    expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
+    expect(redactEventMock).not.toHaveBeenCalled();
     await vi.waitFor(() => {
       expect(sendSingleTextMessageMatrixMock).toHaveBeenCalledTimes(1);
     });
@@ -1887,8 +1893,8 @@ describe("matrix monitor handler draft streaming", () => {
 
     await deliver({ text: "Beta" }, { kind: "final" });
 
-    expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(2);
-    expect(redactEventMock).toHaveBeenCalledWith("!room:example.org", "$draft2");
+    expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
+    expect(redactEventMock).not.toHaveBeenCalled();
     await finish();
   });
 
@@ -1923,9 +1929,14 @@ describe("matrix monitor handler draft streaming", () => {
     });
     await deliver({ text: "Alpha" }, { kind: "block" });
 
-    expect(editMessageMatrixMock).not.toHaveBeenCalled();
-    expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(1);
-    expect(redactEventMock).toHaveBeenCalledWith("!room:example.org", "$draft1");
+    expect(editMessageMatrixMock).toHaveBeenCalledWith(
+      "!room:example.org",
+      "$draft1",
+      "Alpha",
+      expect.anything(),
+    );
+    expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
+    expect(redactEventMock).not.toHaveBeenCalled();
     await vi.waitFor(() => {
       expect(sendSingleTextMessageMatrixMock).toHaveBeenCalledTimes(1);
     });
@@ -1933,8 +1944,8 @@ describe("matrix monitor handler draft streaming", () => {
 
     await deliver({ text: "Beta" }, { kind: "final" });
 
-    expect(deliverMatrixRepliesMock).toHaveBeenCalledTimes(2);
-    expect(redactEventMock).toHaveBeenCalledWith("!room:example.org", "$draft2");
+    expect(deliverMatrixRepliesMock).not.toHaveBeenCalled();
+    expect(redactEventMock).not.toHaveBeenCalled();
     await finish();
   });
 
